@@ -11,7 +11,13 @@ sk5-ai-skills/
 ├── skills/
 │   ├── sk5-ship-database-SKILL.md        # 船表冷数据库：SQLite 架构、CLI 检索、零常驻冷调用 SOP
 │   ├── sk5-ship-log-reader-SKILL.md      # 船表读取：PDF 船表 → 标准 Markdown + 计算器 JSON 速填卡
-│   └── sk5-gunfire-calculator-SKILL.md   # 炮击计算：全场统筹修正 → 命中/穿透/DP/DE 完整解算 SOP
+│   ├── sk5-gunfire-calculator-SKILL.md   # 炮击计算：全场统筹修正 → 命中/穿透/DP/DE 完整解算 SOP
+│   └── simplot-sk5/
+│       ├── SKILL.md                      # SimPlot2 存档生成/编辑：SK5 移动引擎、光栅地图协议
+│       └── scripts/                      # 存档读写 / 地图坐标换算 / SK5 机动推进工具脚本
+│           ├── sk5_scn_tool.py
+│           ├── sk5_map_tool.py
+│           └── simplot_sk5_cmd.py
 ├── tools/
 │   └── sk5_db.py                         # 冷数据库 CLI 查询工具（list/get/search/query/stats）
 └── references/
@@ -55,6 +61,21 @@ python3 tools/sk5_db.py query --min-gun 14 --min-speed 28 --radar
 - 「调出 XX 船表」→ CLI 提取六章标准 Markdown 船表
 - 「计算 A 炮击 B」→ 全场统筹修正 → 命中部位 → 穿透比对 → DP/DE 结算 → 结构化战报
 - 「解析这份 PDF」→ 双页/单页版式判定 → 穿透表/火控表物理坐标直采 → MD + JSON 双交付物
+- 「SimPlot 存档 / 移动标绘」→ SK5 机动引擎推进（前冲 + 渐进尾迹）→ SimPlot2 存档生成与编辑
+
+## 🚢 SimPlot 移动引擎（skills/simplot-sk5）
+
+针对 SimPlot2 桌面兵棋的 SK5 定制存档方案，含可运行脚本：
+
+- **SK5 机动引擎**：每回合 2 分钟；转向 >15° 时标准舵距离折算 75%、急舵 50%；多段转向首段强制沿原航向直行（舵效前冲），其余角度平均分配，切出 1~5 段平滑渐进尾迹。
+- **光栅地图协议**（反编译验证）：`Scenario.TypeOfMap=1` + 配套 CRLF txt（`MAP=` 图片、`SCALE=` 每海里像素数），像素 ↔ 世界坐标换算公式与已知坑位清单齐全。
+- **存档安全红线**：所有空数组必须写 `{}`（写 `[]` 桌面版崩溃）、舰船 `Speed/Course ×1000` 定点整数、机场/登陆点无机动字段等，逐条经工作存档验证。
+
+```python
+import simplot_sk5_cmd as cmd
+cmd.process_turn(unit_data, 30.0, 90.0, False, "12:02:00")
+# 自动计算前冲、分配转角、折扣距离，写入航路点画出圆滑尾迹
+```
 
 ## 📋 三技能流水线
 
