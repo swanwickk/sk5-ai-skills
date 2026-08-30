@@ -2,9 +2,6 @@
 
 将 **Seekrieg 5（SK5）** 战术海战兵棋与 **SimPlot2** 桌面/移动端标图的完整推演流程工程化，供 AI Agent（如 Hermes Agent 等）加载使用的专业技能（Skills）统一体系。
 
-配套在线工具：**SK5 炮击计算器** <https://sk5.swanwick.site>  
-移动端标图：**SimPlot Android / 铁底湾** <https://tdw.swanwick.site>
-
 ---
 
 ## 📦 三位一体统一架构 (3-in-1 Unified Architecture)
