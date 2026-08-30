@@ -1,103 +1,73 @@
-# SK5 AI Skills — Seekrieg 5 海战兵棋 AI 技能集
+# SK5 AI Skills — Seekrieg 5 海战兵棋 AI 技能集 (v2.0)
 
-将 **Seekrieg 5（SK5）** 战术海战兵棋的船表数据管理、转录与火控解算流程工程化，供 AI Agent（如 Hermes Agent 等）加载使用的技能（Skills）合集。
+将 **Seekrieg 5（SK5）** 战术海战兵棋与 **SimPlot2** 桌面/移动端标图的完整推演流程工程化，供 AI Agent（如 Hermes Agent 等）加载使用的专业技能（Skills）统一体系。
 
-配套在线工具：**SK5 炮击计算器** <https://sk5.swanwick.site>
+配套在线工具：**SK5 炮击计算器** <https://sk5.swanwick.site>  
+移动端标图：**SimPlot Android / 铁底湾** <https://tdw.swanwick.site>
 
-## 📦 内容
+---
+
+## 📦 三位一体统一架构 (3-in-1 Unified Architecture)
 
 ```
 sk5-ai-skills/
 ├── skills/
-│   ├── sk5-ship-database-SKILL.md        # 船表冷数据库：SQLite 架构、CLI 检索、零常驻冷调用 SOP
-│   ├── sk5-ship-log-reader-SKILL.md      # 船表读取：PDF 船表 → 标准 Markdown + 计算器 JSON 速填卡
-│   ├── sk5-gunfire-calculator-SKILL.md   # 炮击计算：全场统筹修正 → 命中/穿透/DP/DE 完整解算 SOP
-│   └── simplot-sk5/
-│       ├── SKILL.md                      # SimPlot2 存档生成/编辑：SK5 移动引擎、光栅地图协议
-│       └── scripts/                      # 存档读写 / 地图坐标换算 / SK5 机动推进工具脚本
-│           ├── sk5_scn_tool.py
-│           ├── sk5_map_tool.py
-│           └── simplot_sk5_cmd.py
+│   ├── sk5-engine/                         # 【推演主引擎】：运动学、鱼雷、雷达/目视侦察、G1射界、H1.6集火、K1-K4穿甲与过穿裁决、Tier闭环与 SimPlot2 存盘
+│   │   ├── SKILL.md
+│   │   ├── scripts/
+│   │   │   ├── simplot_sk5_cmd.py          # SK5 2分钟机动与前冲推进引擎
+│   │   │   ├── sk5_scn_tool.py             # SimPlot 存档标准序列化工具
+│   │   │   ├── sk5_map_tool.py             # 光栅地图 txt 与坐标换算
+│   │   │   └── sk5_distances.py            # D表侦察与地平线测距工具
+│   │   └── references/
+│   │       └── d-tables-visibility-detection.md  # D1-D5 视距与夜战闪光速查
+│   ├── sk5-situation-briefing/             # 【双盲简报通信层】：标准 5 大独立板块、双盲情报隔离、雷达水柱回波/起火爆炸观察规范
+│   │   └── SKILL.md
+│   └── sk5-ship-database/                  # 【战舰冷资产库】：SQLite 3354 艘 ships.db、PDF 实印坐标直采解析与 CLI 工具
+│       └── SKILL.md
 ├── tools/
-│   └── sk5_db.py                         # 冷数据库 CLI 查询工具（list/get/search/query/stats）
-└── references/
-    └── sk5_ship_log_spec.md              # SK5 标准船表字段规范与规则手册映射（B1/B2/C4/W1/J1/K4/L/M1）
+│   └── sk5_db.py                           # 冷数据库 CLI 查询工具（list/get/search/query/stats）
+└── README.md
 ```
 
-## 🎯 设计原则
+---
 
-1. **绝对零常驻（Zero Context Footprint）**——数据库平时完全冷态，不占 AI 上下文 Token；推演时按需毫秒级提取。
-2. **100% 官方原页实印**——严禁按口径/年代推断或合成穿深表、火控表；所有数值从官方 PDF 物理坐标聚类直采。
-3. **双版式自适应**——区分双页主力大舰与单页独立小艇（RF 速射炮/鱼雷走 Table W1 简化火控），绝不强行拼页。
-4. **零脑补阻断机制**——推演要素缺失时立即暂停并向玩家索取，绝不自行代入默认值。
+## 🎯 核心能力与推演闭环
 
-## 🚀 快速开始
+### 1. 核心推演主引擎 (`skills/sk5-engine`)
+- **SK5 运动学与物理减速**：2 分钟回合标尺；标准舵折算 75%、急舵 50%；多段转向首段强制沿原航向直行（舵效前冲 Advance）；超出船表极速自动截断（Clamp）。
+- **实体水下鱼雷建模**：独立 `UnitType: "Torpedo"` 实体、`PastWaypointArray1` 水下航迹链、扇面危险区宽度（宽 1500 码 / 标 1000 码 / 窄 500 码）。
+- **双重约束侦察体系**：国际海事精确换算（$1\text{ NM} = 2,025.37\text{ 码}$）；$\min(\text{Table Z4 NOTES}, \text{Chart D3 物理几何地平线})$；Chart D5 重炮闪光（22,000 码）与小口径闪光（17,500 码）。
+- **火炮火控与集火**：ROF 单回合门弹数法则；新目标首轮射速减半；Chart G1 射界死角核验；**Chart H1.6 多舰集火全员同等承受 $-(N-1)$ 惩罚**；Chart H1.1e 雷达盲射。
+- **法定穿甲等级与过穿裁决**：
+  - 部位装甲 $\le 0.5"$ 强制查 **Chart K3**（AP 21-00 过穿未爆 Class B，HE 91-00 过穿）；
+  - 穿深 $> 2\times$装甲 强制查 **Chart K2**；
+  - **Class B（过穿未爆）只造成 Chart K4 Class B 固定贯穿结构伤**，大幅免受内部大爆炸；
+- **总体战损 (Tier) 与内嵌闭环**：累计战损跨越 10% 门槛独立投 D100；触发后查 Table L3 G 栏；次生 DE（DE 100 弹药库殉爆、DE 107 卡死、DE 152 起火 Severity 20 等）当回合全量闭环投骰，严禁未决描述。
+- **SimPlot2 双端 100% 互通**：顶层 `TimeState` 模型、19 字符完整时间戳、空对象 `{}` 防崩溃、`PerceptionArray` 连续跟踪动态显隐。
 
-### 数据库 CLI
+---
 
-```bash
-# 统计摘要
-python3 tools/sk5_db.py stats
+### 2. 双盲简报与通信层 (`skills/sk5-situation-briefing`)
+- **标准 5 大独立板块**：
+  - ① 舰队各舰当前航态与状态（表格）
+  - ② 本回合舰队侦察结果（带 `tn xxxx` 编号、方位、距离）
+  - ③ 本回合舰队射击结果（明确标注发射弹种，盲射报水柱回波，仅明确产生起火/殉爆才报起火爆炸）
+  - ④ 舰队被攻击与战损情况（4.1 本回合被攻击情况，末尾自然陈述“其他单位均报告未受到攻击”；4.2 全舰队累计受损汇总）
+  - ⑤ 弹药存量（精确追踪分弹种余量）
+- **干练军事文风**：有情况写实况，没情况直接写“未见异常”或“无异常”，严禁负面罗列“未见XX、未见YY”冗余套话。
 
-# 按国别+舰型筛选
-python3 tools/sk5_db.py list --country "UNITED STATES" --hull BB
+---
 
-# 调出完整标准 Markdown 船表
-python3 tools/sk5_db.py get "爱荷华" --format md
+### 3. 战舰冷资产库 (`skills/sk5-ship-database`)
+- **绝对零常驻**：SQLite `ships.db` 平时处于冷态，推演时通过 `sk5_db.py` 毫秒级按需提取，不占上下文 Token。
+- **100% 官方原页实印**：收录美日二战 3,354 艘战舰标准 Markdown 船表与计算器 JSON 速填卡。
 
-# 全文检索武器 / 雷达型号
-python3 tools/sk5_db.py search "16\"/50 Mk 7"
-
-# 复合条件筛选
-python3 tools/sk5_db.py query --min-gun 14 --min-speed 28 --radar
-```
-
-> `tools/sk5_db.py` 默认读取同目录下 `./database/ships.db`。数据库本体（含 3000+ 艘舰的标准 Markdown 船表全文、计算器 JSON 速填卡与 FTS5 全文索引）由官方 PDF 解析脚本离线构建，因版权原因不在本仓库分发。
-
-### 加载为 AI 技能
-
-将 `skills/*.md` 放入你的 Agent 技能目录（Hermes Agent 为 `~/.hermes/skills/<category>/<name>/SKILL.md`），Agent 即可按其中的 SOP 执行：
-
-- 「调出 XX 船表」→ CLI 提取六章标准 Markdown 船表
-- 「计算 A 炮击 B」→ 全场统筹修正 → 命中部位 → 穿透比对 → DP/DE 结算 → 结构化战报
-- 「解析这份 PDF」→ 双页/单页版式判定 → 穿透表/火控表物理坐标直采 → MD + JSON 双交付物
-- 「SimPlot 存档 / 移动标绘」→ SK5 机动引擎推进（前冲 + 渐进尾迹）→ SimPlot2 存档生成与编辑
-
-## 🚢 SimPlot 移动引擎（skills/simplot-sk5）
-
-针对 SimPlot2 桌面兵棋的 SK5 定制存档方案，含可运行脚本：
-
-- **SK5 机动引擎**：每回合 2 分钟；转向 >15° 时标准舵距离折算 75%、急舵 50%；多段转向首段强制沿原航向直行（舵效前冲），其余角度平均分配，切出 1~5 段平滑渐进尾迹。
-- **光栅地图协议**（反编译验证）：`Scenario.TypeOfMap=1` + 配套 CRLF txt（`MAP=` 图片、`SCALE=` 每海里像素数），像素 ↔ 世界坐标换算公式与已知坑位清单齐全。
-- **存档安全红线**：所有空数组必须写 `{}`（写 `[]` 桌面版崩溃）、舰船 `Speed/Course ×1000` 定点整数、机场/登陆点无机动字段等，逐条经工作存档验证。
-
-```python
-import simplot_sk5_cmd as cmd
-cmd.process_turn(unit_data, 30.0, 90.0, False, "12:02:00")
-# 自动计算前冲、分配转角、折扣距离，写入航路点画出圆滑尾迹
-```
-
-## 📋 三技能流水线
-
-```
-官方 PDF 船表
-     │
-     ▼
-[sk5-ship-log-reader]  版式判定 + 坐标聚类实印直采
-     │
-     ▼
-标准 Markdown 船表 + JSON 速填卡 ──► SQLite 冷库 (ships.db)
-     │                                        │
-     ▼                                        ▼
-[sk5-gunfire-calculator] ◄──按需冷调用── [tools/sk5_db.py]
-     │
-     ▼
-结构化推演战报（命中数 / 部位 / 穿透 / DP / DE / Tier 检定）
-```
+---
 
 ## ⚖️ 版权声明
 
-本仓库仅包含**工作流程文档、SOP 与工具代码**，不含任何 Seekrieg 5 规则书文本、数据表格原文或官方 PDF。Seekrieg 5 为 Jeff Casher（Deep Sea Wargames）作品，相关版权归其所有。
+本仓库仅包含 **AI Agent 工作流程文档、推演引擎代码与 SOP**，不含任何 Seekrieg 5 商业规则书扫描件或受版权保护的原版 PDF。Seekrieg 5 为 Jeff Casher（Deep Sea Wargames）作品，相关版权归其所有。
 
 ## License
 
