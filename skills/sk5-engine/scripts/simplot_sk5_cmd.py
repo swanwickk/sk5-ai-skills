@@ -50,28 +50,38 @@ def calculate_sk5_move(current_x, current_y, current_heading, ordered_speed, ord
 
     return waypoints, cur_x, cur_y, headings[-1]
 
-def process_turn(unit_dict, ordered_speed, ordered_heading, is_hard_rudder, turn_time_str):
+def process_turn(unit_dict, ordered_speed, ordered_heading, is_hard_rudder, turn_time_str,
+                 round_start_str=None):
+    """turn_time_str=回合末时刻. 每腿时间戳在[round_start,turn_time]内等分展开并截断到整分；
+    航迹点Course=执行航速x1000, Speed=该leg航向x1000（PC实测，与数组语义互换）"""
+    from datetime import datetime, timedelta
     current_x = unit_dict.get("X", 0)
     current_y = unit_dict.get("Y", 0)
     current_heading = unit_dict.get("Course", 0) / 1000.0
-    
+
     waypoints, end_x, end_y, end_course = calculate_sk5_move(
         current_x, current_y, current_heading, ordered_speed, ordered_heading, is_hard_rudder
     )
-    
+
     unit_dict["X"] = int(round(end_x))
     unit_dict["Y"] = int(round(end_y))
     unit_dict["Course"] = int(end_course * 1000)
-    unit_dict["Speed"] = int(ordered_speed * 1000) 
-    
-    if "PastWaypointArray1" not in unit_dict or not isinstance(unit_dict["PastWaypointArray1"], list) or len(unit_dict["PastWaypointArray1"]) == 0:
-        unit_dict["PastWaypointArray1"] = [
+    unit_dict["Speed"] = int(ordered_speed * 1000)
+
+    if "PastWaypointArray" not in unit_dict or not isinstance(unit_dict["PastWaypointArray"], list) or len(unit_dict["PastWaypointArray"]) == 0:
+        unit_dict["PastWaypointArray"] = [
             sk5_scn_tool.create_waypoint(current_x, current_y, unit_dict.get("PositionTimeCreated", turn_time_str))
         ]
-        
-    for wp in waypoints:
-        unit_dict["PastWaypointArray1"].append(
-            sk5_scn_tool.create_waypoint(wp[0], wp[1], turn_time_str)
+
+    n = len(waypoints)
+    t_end = datetime.strptime(turn_time_str, "%Y-%m-%d %H:%M:%S")
+    t_start = datetime.strptime(round_start_str, "%Y-%m-%d %H:%M:%S") if round_start_str else t_end
+    for i, wp in enumerate(waypoints, 1):
+        # ponytail: 截断到整分在腿数>3时可能撞戳, 届时改秒级
+        t = (t_start + (t_end - t_start) * i / n).replace(second=0, microsecond=0)
+        unit_dict["PastWaypointArray"].append(
+            sk5_scn_tool.create_waypoint(wp[0], wp[1], t.strftime("%Y-%m-%d %H:%M:%S"),
+                                         ordered_speed, wp[2])
         )
-        
+
     return unit_dict

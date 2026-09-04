@@ -1,7 +1,7 @@
 ---
 name: sk5-ship-database
 description: SK5战舰数据库与调船：查船/调出船表/ships.db/生成推演卡。
-version: 1.2.0
+version: 1.1.0
 author: Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
@@ -85,7 +85,7 @@ CREATE VIRTUAL TABLE ships_fts USING fts5(
 
 ## 🛠️ CLI 工具使用指南 (`sk5_db.py`)
 
-在 Linux 终端或 AI 执行环境中调用：
+在 Linux 终端或 AI 执行环境中调用（注意：Python 环境使用 `/root/.hermes/hermes-agent/venv/bin/python`）：
 
 ```bash
 # 1. 查看数据库统计与各舰型/编制分布
@@ -100,8 +100,15 @@ python3 /root/sk5_database/sk5_db.py list --team "美军驱逐舰_WW2"
 # (1) 战舰快速属性卡
 python3 /root/sk5_database/sk5_db.py get "爱荷华"
 python3 /root/sk5_database/sk5_db.py get "Enterprise (CV 6)"
-python3 /root/sk5_database/sk5_db.py get "Washington" --format json
-# (2) 导出完整六章标准 Markdown 船表
+python3 /root/sk5_database/sk5_db.py get "Farragut (TB11)"
+
+# (2) 提取完整标准 Markdown 船表
+python3 /root/sk5_database/sk5_db.py get "Alaska" --format md
+
+# (3) 提取计算器 JSON 速填卡（直接粘贴至 sk5.swanwick.site）
+python3 /root/sk5_database/sk5_db.py get "艾尔文" --format json
+
+# (4) 导出船表至指定工作区文件
 python3 /root/sk5_database/sk5_db.py get "Washington" --format md --out /root/.hermes/workspace/Washington_1942.md
 
 # 4. 全文关键词检索（武器、雷达、飞机、动力型号）
@@ -118,5 +125,13 @@ python3 /root/sk5_database/sk5_db.py query --radar --min-speed 30.0
 
 ## 🤖 AI 兵棋推演按需冷调用 SOP
 
-1. **“调出 [舰名] 船表”**：终端调用 `sk5_db.py get [舰名] --format md` 提取六章标准船表展示；
-2. **“计算 [射击舰] 炮击 [目标舰]”**：分别提取射击舰与目标舰的 JSON 速填卡，提取主炮口径、DF、ROF、射程、火控雷达及目标装甲，严格按 SK5 规则查表解算。
+在日常对话与海战兵棋推演中，AI 严格遵循以下工作流：
+
+1. **“调出 [舰名] 船表”**：
+   - 终端调用 `sk5_db.py get [舰名] --format md`；
+   - 提取六章标准船表展示给玩家，并记录推演作战单位属性。
+2. **“计算 [射击舰] 炮击 [目标舰]”**：
+   - 分别提取射击舰与目标舰的 JSON 速填卡；
+   - 提取主炮口径、DF、ROF、射程、火控雷达以及目标舰 1H–9V 装甲厚度，严格按 SK5 规则查表解算。
+3. **“查询 / 筛选符合条件的战舰”**：
+   - 终端调用 `sk5_db.py query` 或 `sk5_db.py search`，以结构化表格返回。
